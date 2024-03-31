@@ -1,14 +1,9 @@
 #include <algorithm>
-#include <cmath>
-#include <fstream>
 #include <iostream>
 #include <numeric>
-#include <set>
 #include <string>
 #include <vector>
-#include <unordered_map>
 
-#define RL 0.75
 #define alphabet "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 #define alphabet_size 26
 
@@ -57,6 +52,7 @@ public:
     }
 
     [[nodiscard]] std::string encode(const std::string &text) const {
+        // метод шифрования
         std::string cipher_text;
         for (char ch: text) {
             if (_alphabet.find(ch) == std::string::npos) {
@@ -68,6 +64,7 @@ public:
     }
 
     [[nodiscard]] std::string decode(const std::string &cipher_text) const {
+        // метод расшифрования
         std::string text;
         for (char ch: cipher_text) {
             if (_alphabet.find(ch) == std::string::npos) {
@@ -83,47 +80,24 @@ private:
     Key _key;
 
     [[nodiscard]] inline int _encode(const char ch) const noexcept {
+        // метод зашифрования одного символа, основываясь на численном представлении тип char
         return (_key.alpha * int(ch - 'A') + _key.k) % _alphabet.size();
     }
 
     [[nodiscard]] inline int _decode(const char ch) const noexcept {
+        // метод расшифрования одного символа, основываясь на численном представлении тип char
         size_t ord = _alphabet.size();
         return (_opposite(_key.alpha, ord) * (int(ch - 'A') + (ord - _key.k))) % ord;
     }
 
     [[nodiscard]] int _opposite(const int a, const int m) const noexcept {
+        // метод получения обратного по модулю для использования в методе расшифрования
         if (a == 1) {
             return 1;
         }
         return (1 - _opposite(m % a, a) * m) / a + m;
     }
 };
-
-[[nodiscard]] inline std::unordered_map<size_t, std::set<std::string>> init_gram_library(const size_t max_size) {
-    if (max_size < 1) {
-        throw std::runtime_error{"Meaningless action"};
-    }
-    using set = std::set<std::string>;
-    using map = std::unordered_map<size_t, set>;
-
-    map library;
-    std::string word;
-    for (size_t i = 1; i <= max_size; i++) {
-        library[i] = set();
-        std::ifstream library_file(
-                R"(C:\Users\minme\Desktop\Affine cipher\data\library_)" + std::to_string(i) + "-gram.txt");
-        if (!library_file.is_open()) {
-            throw std::runtime_error{"Unable to open file library_" + std::to_string(i) + "-gram.txt"};
-        }
-        while (library_file.good()) {
-            library_file >> word;
-            library[i].insert(word);
-        }
-    }
-
-    return library;
-}
-
 
 int main() {
     const std::string cipher_text = "BXWMFFGZWEGRXWJGSMBURWIFQIZIMHRXMVWBGESKVSBGBKBGIZEGRXWJCXWJWWMEXHWBBWJ"
@@ -141,7 +115,7 @@ int main() {
                                     "WJMBIJBXGSOWZWJMBIJGSZIBMEJURBIOJMRXGEMHHUSWEKJWRSWKNIJMZNIQZKQVWJOWZWJ"
                                     "MBIJFIJBXWSMQWJWMSIZBXMBBXWMFFGZWEGRXWJGSZIBSWEKJW";
 
-    //const auto library = init_gram_library(15);
+    // получение всех ключей - таких двоек alpha и k, где alpha взаимнопросто с мощностью рабочего алфавита
     std::vector<Key> possible_keys;
     for (size_t alpha = 1; alpha < alphabet_size; alpha++) {
         if (std::gcd(alpha, alphabet_size) != 1) {
@@ -152,6 +126,7 @@ int main() {
         }
     }
 
+    // расшифрование 10 первых символов шифртекста с помощью каждого клбюча
     for (const auto& key : possible_keys) {
         auto cipher = AffineCipher(key);
         auto decoded_text = cipher.decode(cipher_text.substr(0, 10));
@@ -169,63 +144,10 @@ int main() {
     std::cin >> chosen_k;
     std::cout << std::endl;
 
+    // вывод дешифрованного текста на основе выбранного пользователем ключа
     auto cipher = AffineCipher(chosen_alpha, chosen_k);
     auto decoded_text = cipher.decode(cipher_text);
     std::cout << "Decoded text: " << decoded_text << std::endl;
 
-    /*
-    const size_t u_distance = std::ceil(
-            std::log2(possible_keys.size()) / (RL * std::log2(alphabet_size)));
-    const auto library = init_gram_library(3 * u_distance);
-
-    for (size_t length = 2; length <= u_distance; length++) {
-        auto cipher_subtext = cipher_text.substr(0, length);
-        std::cout << "Trying for the first " << length << " symbols: " << cipher_subtext << std::endl;
-        for (auto it = possible_keys.begin(); it != possible_keys.end();) {
-            auto cipher = AffineCipher(*it);
-            auto decoded_text = cipher.decode(cipher_subtext);
-            if (library.at(length).find(decoded_text) == library.at(length).end()) {
-                std::cout << "\tTo remove: " << it->to_string() << std::endl;
-                possible_keys.erase(it);
-            } else {
-                it++;
-            }
-        }
-        std::cout << std::endl;
-    }
-    std::cout << "Left:" << std::endl;
-    for (const auto parameter: possible_keys) {
-        std::cout << "\t" << parameter.to_string() << std::endl;
-    }
-    std::cout << std::endl;
-
-    for (size_t length = 2; length <= 2 * u_distance; length++) {
-        auto cipher_subtext = cipher_text.substr(u_distance, length);
-        std::cout << "Trying for " << length << " symbols: " << cipher_subtext << std::endl;
-        for (auto it = possible_keys.begin(); it != possible_keys.end();) {
-            auto cipher = AffineCipher(*it);
-            auto decoded_text = cipher.decode(cipher_subtext);
-            if (library.at(length).find(decoded_text) == library.at(length).end()) {
-                std::cout << "\tTo remove: " << it->to_string() << std::endl;
-                possible_keys.erase(it);
-            } else {
-                it++;
-            }
-        }
-        std::cout << std::endl;
-    }
-    std::cout << "Left:" << std::endl;
-    for (const auto parameter: possible_keys) {
-        std::cout << "\t" << parameter.to_string() << std::endl;
-    }
-    std::cout << std::endl;
-
-    if (possible_keys.size() != 1) {
-        throw std::runtime_error{"Decryption failed"};
-    }
-    std::cout << "Key for this cipher is: " << possible_keys.front().to_string() << std::endl;
-    auto cipher = AffineCipher(possible_keys.front());
-    std::cout << "Decrypted text:\n" << cipher.decode(cipher_text) << std::endl;
-*/
     return 0;
 }
