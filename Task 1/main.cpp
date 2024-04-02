@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#define alphabet "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    #define alphabet "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 #define alphabet_size 26
 
 struct Key {
